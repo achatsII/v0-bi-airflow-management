@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
@@ -63,31 +63,211 @@ const availableToggles = [
 ]
 
 export default function AirflowManagement() {
-  const [selectedClient, setSelectedClient] = useState<string>("")
+  const [selectedClientId, setSelectedClientId] = useState<string>("")
+  const [selectedClient, setSelectedClient] = useState<any>(null)
+  const [clients, setClients] = useState<any[]>([])
   const [clientData, setClientData] = useState<any>(null)
   const [newReport, setNewReport] = useState({ name: "", group_id: "", dataset_id: "" })
   const [showAddReport, setShowAddReport] = useState(false)
+  const [loadingClients, setLoadingClients] = useState(true)
+  const [savingConfig, setSavingConfig] = useState(false)
+  const [loadingReports, setLoadingReports] = useState(false)
 
-  const handleClientSelect = (clientName: string) => {
-    setSelectedClient(clientName)
-    const client = mockClients.find((c) => c.name === clientName)
-    setClientData(client ? { ...client } : null)
+  // Fetch clients from database on component mount
+  useEffect(() => {
+    const fetchClients = async () => {
+      try {
+        setLoadingClients(true)
+        const response = await fetch("/api/clients")
+        
+        if (!response.ok) {
+          throw new Error("Failed to fetch clients")
+        }
+        
+        const data = await response.json()
+        setClients(data.clients || [])
+      } catch (error) {
+        console.error("Error fetching clients:", error)
+        // Fallback to mock data if API fails
+        setClients(mockClients)
+      } finally {
+        setLoadingClients(false)
+      }
+    }
+
+    fetchClients()
+  }, [])
+
+  // Function to fetch reports for a specific client
+  const fetchClientReports = async (clientId: string) => {
+    try {
+      setLoadingReports(true)
+      const response = await fetch(`/api/clients/${clientId}/reports`)
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch client reports")
+      }
+      
+      const data = await response.json()
+      console.log('📊 Fetched reports for client:', data.reports)
+      return data.reports || []
+    } catch (error) {
+      console.error("Error fetching client reports:", error)
+      // Return empty array if API fails
+      return []
+    } finally {
+      setLoadingReports(false)
+    }
+  }
+
+  const handleClientSelect = async (clientId: string) => {
+    setSelectedClientId(clientId)
+    // Find the full client object from the database clients
+    const client = clients.find((c) => c.id?.toString() === clientId || c.name === clientId)
+    setSelectedClient(client)
+    
+    // Debug logging
+    console.log('Selected client ID:', clientId)
+    console.log('Found client:', client)
+    
+    // Map database client data to frontend structure
+    if (client) {
+      // Fetch real reports for this client
+      const reports = await fetchClientReports(client.id)
+      
+      // Create client data structure using database values
+      setClientData({
+        name: client.name,
+        db_name: client.name,
+        ga_name: client.name,
+        docker_version: client.docker_version || "0.7.1",
+        cron: { 
+          expression: client.cron_expression || "0 7,15 * * *", 
+          timezone: client.cron_timezone || "America/Toronto" 
+        },
+        reports: reports, // Use real reports from database
+        toggles: [
+          ...(client.toggle_part_events ? ["part_events"] : []),
+          ...(client.toggle_new_part_events ? ["new_part_events"] : []),
+          ...(client.toggle_performance_loss ? ["performance_loss"] : []),
+          ...(client.toggle_custom ? ["custom"] : [])
+        ],
+      })
+      
+      console.log('🔄 Mapped client data with real reports:', {
+        docker_version: client.docker_version,
+        cron_expression: client.cron_expression,
+        cron_timezone: client.cron_timezone,
+        reports_count: reports.length,
+        toggles: {
+          part_events: client.toggle_part_events,
+          new_part_events: client.toggle_new_part_events,
+          performance_loss: client.toggle_performance_loss,
+          custom: client.toggle_custom
+        }
+      })
+    } else {
+      setClientData(null)
+    }
     setShowAddReport(false)
   }
 
-  const handleSave = () => {
-    alert(`Configuration saved for ${selectedClient}!`)
+  const handleSave = async () => {
+    console.log('🔧 Save button clicked!')
+    console.log('📋 Selected client:', selectedClient)
+    console.log('📊 Client data:', clientData)
+    
+    if (!selectedClient || !clientData) {
+      console.log('❌ Missing client or client data')
+      alert('Please select a client first.')
+      return
+    }
+
+    setSavingConfig(true)
+    
+    try {
+      // Prepare configuration data to send to the API
+      const configData = {
+        docker_version: clientData.docker_version,
+        cron_expression: clientData.cron?.expression,
+        cron_timezone: clientData.cron?.timezone,
+        toggles: clientData.toggles || []
+      }
+
+      console.log('💾 Saving configuration for client ID:', selectedClient.id)
+      console.log('📦 Configuration data to send:', configData)
+
+      const response = await fetch(`/api/clients/${selectedClient.id}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(configData),
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save configuration.')
+      }
+
+      const result = await response.json()
+      alert(`✅ Configuration saved successfully for ${selectedClient.name}!`)
+      console.log('Save result:', result)
+      
+    } catch (error) {
+      console.error('Error saving configuration:', error)
+      if (error instanceof Error) {
+        alert(`❌ Error saving configuration: ${error.message}`)
+      } else {
+        alert('❌ An unknown error occurred while saving the configuration.')
+      }
+    } finally {
+      setSavingConfig(false)
+    }
   }
 
-  const handleAddReport = () => {
+  const handleAddReport = async () => {
     if (newReport.name && newReport.group_id && newReport.dataset_id) {
-      setClientData({
-        ...clientData,
-        reports: [...clientData.reports, { type: "powerbi", ...newReport }],
-      })
-      setNewReport({ name: "", group_id: "", dataset_id: "" })
-      setShowAddReport(false)
-      alert("Report added successfully!")
+      const reportData = {
+        name: newReport.name,
+        group_id: newReport.group_id,
+        dataset_id: newReport.dataset_id,
+        type: "powerbi",
+        client_id: selectedClient?.id || selectedClient?.client_id || null,
+      }
+
+      try {
+        const response = await fetch("/api/reports", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(reportData),
+        })
+
+        if (!response.ok) {
+          const errorData = await response.json()
+          throw new Error(errorData.error || "Failed to add report to BigQuery.")
+        }
+
+        // On successful API call, refresh the reports list from database
+        const updatedReports = await fetchClientReports(selectedClient.id)
+        setClientData({
+          ...clientData,
+          reports: updatedReports,
+        })
+
+        setNewReport({ name: "", group_id: "", dataset_id: "" })
+        setShowAddReport(false)
+        alert("Report added successfully!")
+      } catch (error) {
+        console.error("Error adding report:", error)
+        if (error instanceof Error) {
+          alert(`Error adding report: ${error.message}`)
+        } else {
+          alert("An unknown error occurred while adding the report.")
+        }
+      }
     }
   }
 
@@ -123,13 +303,13 @@ export default function AirflowManagement() {
           <CardTitle>Client Selection</CardTitle>
         </CardHeader>
         <CardContent>
-          <Select value={selectedClient} onValueChange={handleClientSelect}>
+          <Select value={selectedClientId} onValueChange={handleClientSelect} disabled={loadingClients}>
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Select a client" />
+              <SelectValue placeholder={loadingClients ? "Loading clients..." : "Select a client"} />
             </SelectTrigger>
             <SelectContent>
-              {mockClients.map((client) => (
-                <SelectItem key={client.name} value={client.name}>
+              {clients.map((client) => (
+                <SelectItem key={client.id || client.name} value={client.id?.toString() || client.name}>
                   {client.name}
                 </SelectItem>
               ))}
@@ -213,8 +393,8 @@ export default function AirflowManagement() {
                 </div>
               </div>
 
-              <Button onClick={handleSave} className="mt-4">
-                Save Configuration
+              <Button onClick={handleSave} className="mt-4" disabled={savingConfig}>
+                {savingConfig ? 'Saving...' : 'Save Configuration'}
               </Button>
             </CardContent>
           </Card>
@@ -225,30 +405,44 @@ export default function AirflowManagement() {
               <CardTitle>Power BI Reports</CardTitle>
             </CardHeader>
             <CardContent>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Name</TableHead>
-                    <TableHead>Group ID</TableHead>
-                    <TableHead>Dataset ID</TableHead>
-                    <TableHead>Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientData.reports.map((report: any, index: number) => (
-                    <TableRow key={index}>
-                      <TableCell>{report.name}</TableCell>
-                      <TableCell className="font-mono text-sm">{report.group_id}</TableCell>
-                      <TableCell className="font-mono text-sm">{report.dataset_id}</TableCell>
-                      <TableCell>
-                        <Button variant="destructive" size="sm" onClick={() => handleRemoveReport(index)}>
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </TableCell>
+              {loadingReports ? (
+                <div className="flex items-center justify-center py-8">
+                  <div className="text-muted-foreground">Loading reports...</div>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Group ID</TableHead>
+                      <TableHead>Dataset ID</TableHead>
+                      <TableHead>Actions</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {clientData.reports && clientData.reports.length > 0 ? (
+                      clientData.reports.map((report: any, index: number) => (
+                        <TableRow key={index}>
+                          <TableCell>{report.name}</TableCell>
+                          <TableCell className="font-mono text-sm">{report.group_id}</TableCell>
+                          <TableCell className="font-mono text-sm">{report.dataset_id}</TableCell>
+                          <TableCell>
+                            <Button variant="destructive" size="sm" onClick={() => handleRemoveReport(index)}>
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    ) : (
+                      <TableRow>
+                        <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                          No reports found for this client
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
 
               {!showAddReport && (
                 <Button onClick={() => setShowAddReport(true)} className="mt-4" variant="outline">

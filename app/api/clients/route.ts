@@ -1,0 +1,46 @@
+import { NextResponse } from 'next/server';
+import { BigQuery } from '@google-cloud/bigquery';
+
+export async function GET() {
+  try {
+    // Use environment variables for secure configuration
+    const bigquery = new BigQuery({
+      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
+      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
+    });
+
+    const datasetId = "Manual";
+    const tableId = "k2_clients";
+
+    // Query to get all clients
+    const query = `
+      SELECT *
+      FROM \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${datasetId}.${tableId}\`
+      ORDER BY name ASC
+    `;
+
+    const [rows] = await bigquery.query({
+      query: query,
+      location: 'US', // Specify the location if needed
+    });
+
+    return NextResponse.json({ 
+      success: true, 
+      clients: rows 
+    }, { status: 200 });
+
+  } catch (error) {
+    console.error("Failed to fetch clients from BigQuery:", error);
+    
+    let errorMessage = 'An internal server error occurred while fetching clients.';
+    if (error instanceof Error) {
+        if (error.message.includes('NOT_FOUND')) {
+            errorMessage = 'BigQuery k2_clients table not found. Please verify your configuration.';
+        } else if (error.message.includes('ENOENT') || error.message.includes('credential file')) {
+            errorMessage = 'Authentication error: Could not find the ii-access.json file. Please ensure it is in the project root directory.';
+        }
+    }
+    
+    return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
+  }
+}
