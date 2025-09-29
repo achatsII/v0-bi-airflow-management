@@ -140,7 +140,7 @@ export default function AirflowManagement() {
       // Create client data structure using database values (no defaults for null values)
       setClientData({
         name: client.name,
-        db_name: client.name,
+        db_name: client.db_name,
         ga_name: client.name,
         docker_version: client.docker_version || "",
         cron: { 
@@ -336,9 +336,30 @@ export default function AirflowManagement() {
     })
   }
 
+  const handleLogout = async () => {
+    try {
+      const response = await fetch('/api/auth/logout', { method: 'POST' });
+      const data = await response.json();
+      
+      if (data.redirect_url) {
+        window.location.href = data.redirect_url;
+      } else {
+        window.location.href = '/login';
+      }
+    } catch (error) {
+      console.error('Logout error:', error);
+      window.location.href = '/login';
+    }
+  };
+
   return (
     <div className="container mx-auto p-6 max-w-4xl">
-      <h1 className="text-2xl font-bold mb-6">App CS Airflow - Customer Success</h1>
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-2xl font-bold">App CS Airflow - Customer Success</h1>
+        <Button variant="outline" onClick={handleLogout}>
+          Logout
+        </Button>
+      </div>
 
       {/* Client Selection */}
       <Card className="mb-6">
