@@ -59,10 +59,21 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       updateFields.push('toggle_performance_loss = @toggle_performance_loss');
       queryParams.toggle_performance_loss = toggles.includes('performance_loss');
       
-      // Store custom toggle as JSON if it exists
-      const hasCustom = toggles.includes('custom');
+      // Store custom toggle value as raw JSON if it exists
+      const customValue = configData.customToggleValue || "";
       updateFields.push('toggle_custom = @toggle_custom');
-      queryParams.toggle_custom = hasCustom ? JSON.stringify({ enabled: true }) : null;
+      
+      if (customValue) {
+        try {
+          // Validate JSON before saving
+          JSON.parse(customValue);
+          queryParams.toggle_custom = customValue; // Store raw JSON string
+        } catch {
+          return NextResponse.json({ error: 'Invalid JSON in custom configuration.' }, { status: 400 });
+        }
+      } else {
+        queryParams.toggle_custom = null;
+      }
     }
 
     if (updateFields.length === 0) {

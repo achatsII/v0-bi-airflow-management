@@ -8,6 +8,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Trash2, Plus } from "lucide-react"
+import cronstrue from "cronstrue"
+import parser from "cron-parser"
 
 // Mock data based on the provided JSON structure
 const mockClients = [
@@ -135,15 +137,15 @@ export default function AirflowManagement() {
       // Fetch real reports for this client
       const reports = await fetchClientReports(client.id)
       
-      // Create client data structure using database values
+      // Create client data structure using database values (no defaults for null values)
       setClientData({
         name: client.name,
         db_name: client.name,
         ga_name: client.name,
-        docker_version: client.docker_version || "0.7.1",
+        docker_version: client.docker_version || "",
         cron: { 
-          expression: client.cron_expression || "0 7,15 * * *", 
-          timezone: client.cron_timezone || "America/Toronto" 
+          expression: client.cron_expression || "", 
+          timezone: client.cron_timezone || "" 
         },
         reports: reports, // Use real reports from database
         toggles: [
@@ -152,6 +154,10 @@ export default function AirflowManagement() {
           ...(client.toggle_performance_loss ? ["performance_loss"] : []),
           ...(client.toggle_custom ? ["custom"] : [])
         ],
+        customToggleValue: client.toggle_custom ? 
+          (typeof client.toggle_custom === 'string' ? 
+            client.toggle_custom : 
+            JSON.stringify(client.toggle_custom)) : "",
       })
       
       console.log('🔄 Mapped client data with real reports:', {
@@ -191,7 +197,8 @@ export default function AirflowManagement() {
         docker_version: clientData.docker_version,
         cron_expression: clientData.cron?.expression,
         cron_timezone: clientData.cron?.timezone,
-        toggles: clientData.toggles || []
+        toggles: clientData.toggles || [],
+        customToggleValue: clientData.customToggleValue || ""
       }
 
       console.log('💾 Saving configuration for client ID:', selectedClient.id)
@@ -271,10 +278,46 @@ export default function AirflowManagement() {
     }
   }
 
-  const handleRemoveReport = (index: number) => {
-    const updatedReports = clientData.reports.filter((_: any, i: number) => i !== index)
-    setClientData({ ...clientData, reports: updatedReports })
-    alert("Report removed successfully!")
+  const handleRemoveReport = async (index: number) => {
+    if (!selectedClient || !clientData.reports[index]) {
+      alert('Unable to delete report: missing client or report data.')
+      return
+    }
+
+    const reportToDelete = clientData.reports[index]
+    
+    try {
+      // Build query parameters for the DELETE request (only dataset_id needed as primary key)
+      const params = new URLSearchParams({
+        dataset_id: reportToDelete.dataset_id
+      })
+
+      const response = await fetch(`/api/reports?${params}`, {
+        method: 'DELETE',
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to delete report from database.')
+      }
+
+      // On successful API call, refresh the reports list from database
+      const updatedReports = await fetchClientReports(selectedClient.id)
+      setClientData({
+        ...clientData,
+        reports: updatedReports,
+      })
+
+      alert("Report deleted successfully!")
+      
+    } catch (error) {
+      console.error('Error deleting report:', error)
+      if (error instanceof Error) {
+        alert(`❌ Error deleting report: ${error.message}`)
+      } else {
+        alert('❌ An unknown error occurred while deleting the report.')
+      }
+    }
   }
 
   const handleToggleChange = (toggleValue: string, checked: boolean) => {
@@ -327,6 +370,13 @@ export default function AirflowManagement() {
             </CardHeader>
             <CardContent className="space-y-4">
               <div>
+                <Label>Database Name</Label>
+                <p className="text-sm font-medium text-foreground px-3 py-2 bg-muted rounded-md">
+                  {clientData.db_name || "Not specified"}
+                </p>
+              </div>
+
+              <div>
                 <Label htmlFor="docker-version">Docker Version</Label>
                 <Input
                   id="docker-version"
@@ -347,6 +397,29 @@ export default function AirflowManagement() {
                     })
                   }
                 />
+                {clientData.cron.expression && (
+                  <div className="mt-2">
+                    <p className="text-sm text-muted-foreground">
+                      {(() => {
+                        try {
+                          return cronstrue.toString(clientData.cron.expression, {
+                            use24HourTimeFormat: true,
+                          });
+                        } catch (error) {
+                          return "Invalid cron expression";
+                        }
+                      })()}
+                    </p>
+                  </div>
+                )}
+                <a 
+                  href="https://crontab.guru/" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:text-blue-700 underline mt-1 inline-block"
+                >
+                  Cron Maker
+                </a>
               </div>
 
               <div>
@@ -376,7 +449,7 @@ export default function AirflowManagement() {
               <div>
                 <Label>Feature Toggles</Label>
                 <div className="flex flex-wrap gap-4 mt-2">
-                  {availableToggles.map((toggle) => (
+                  {availableToggles.filter(toggle => toggle.value !== 'custom').map((toggle) => (
                     <div key={toggle.value} className="flex items-center space-x-2">
                       <input
                         type="checkbox"
@@ -390,6 +463,44 @@ export default function AirflowManagement() {
                       </Label>
                     </div>
                   ))}
+                </div>
+                
+                <div className="mt-4">
+                  <Label htmlFor="custom-toggle">Custom Configuration (JSON)</Label>
+                  <Input
+                    id="custom-toggle"
+                    placeholder="Enter custom configuration..."
+                    value={clientData.customToggleValue || ""}
+                    onChange={(e) => {
+                      const inputValue = e.target.value;
+                      
+                      // Update the value immediately for typing experience
+                      setClientData({ 
+                        ...clientData, 
+                        customToggleValue: inputValue,
+                        toggles: inputValue 
+                          ? [...(clientData.toggles?.filter((t: string) => t !== 'custom') || []), 'custom']
+                          : clientData.toggles?.filter((t: string) => t !== 'custom') || []
+                      });
+                    }}
+                    onBlur={(e) => {
+                      const inputValue = e.target.value.trim();
+                      
+                      // Validate JSON when user finishes editing (onBlur)
+                      if (inputValue) {
+                        try {
+                          JSON.parse(inputValue);
+                          // Valid JSON - no action needed, already saved in onChange
+                        } catch {
+                          alert("Invalid JSON format. Please check your syntax.");
+                          // Keep the invalid value so user can fix it
+                        }
+                      }
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Enter valid JSON format. Will be validated when you finish editing.
+                  </p>
                 </div>
               </div>
 
