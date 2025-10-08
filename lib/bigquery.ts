@@ -17,14 +17,29 @@ export function createBigQueryClient(): BigQuery {
   if (credentials) {
     try {
       // Try to parse as JSON (production)
-      const credentialsObj = JSON.parse(credentials);
+      let credentialsObj = JSON.parse(credentials);
       
-      // Fix the private key: replace literal \n with actual newlines
+      // Fix the private key: ensure proper newline format
       if (credentialsObj.private_key && typeof credentialsObj.private_key === 'string') {
-        // Replace all variations of escaped newlines
-        credentialsObj.private_key = credentialsObj.private_key
-          .replace(/\\n/g, '\n')
-          .replace(/\\\\n/g, '\n');
+        let key = credentialsObj.private_key;
+        
+        // Log original format for debugging
+        console.log('🔍 Original key length:', key.length);
+        console.log('🔍 First 50 chars:', key.substring(0, 50));
+        console.log('🔍 Has literal \\n:', key.includes('\\n'));
+        console.log('🔍 Has actual newline:', key.includes('\n'));
+        
+        // Try all possible newline formats
+        key = key
+          .split('\\n').join('\n')      // Replace literal \n
+          .split('\\\\n').join('\n')    // Replace double-escaped \\n
+          .split('\r\n').join('\n')     // Normalize Windows newlines
+          .split('\r').join('\n');      // Normalize old Mac newlines
+        
+        credentialsObj.private_key = key;
+        
+        console.log('🔍 After fix - First 50 chars:', key.substring(0, 50));
+        console.log('🔍 After fix - Has newlines:', key.includes('\n'));
       }
       
       console.log('✅ Using BigQuery with JSON credentials');
