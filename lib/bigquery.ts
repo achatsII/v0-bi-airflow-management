@@ -27,10 +27,20 @@ export function createBigQueryClient(): BigQuery {
         // Try to parse as JSON directly
         credentialsObj = JSON.parse(credentials);
         
-        // Fix the private key: ensure proper newline format
+        // Fix the private key: remove ALL newlines and reconstruct properly
         if (credentialsObj.private_key && typeof credentialsObj.private_key === 'string') {
-          credentialsObj.private_key = credentialsObj.private_key
-            .split('\\n').join('\n');
+          let key = credentialsObj.private_key;
+          
+          // Remove all whitespace and newlines
+          key = key.replace(/\s+/g, '');
+          
+          // Reconstruct with proper format
+          // Format: -----BEGIN PRIVATE KEY-----\n{base64}\n-----END PRIVATE KEY-----\n
+          key = key
+            .replace('-----BEGINPRIVATEKEY-----', '-----BEGIN PRIVATE KEY-----\n')
+            .replace('-----ENDPRIVATEKEY-----', '\n-----END PRIVATE KEY-----\n');
+          
+          credentialsObj.private_key = key;
         }
       }
       
