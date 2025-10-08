@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { BigQuery } from '@google-cloud/bigquery';
+import { createBigQueryClient } from '@/lib/bigquery';
 
 export async function POST(request: Request) {
   try {
@@ -10,11 +10,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid data: name, group_id, dataset_id, and type are required.' }, { status: 400 });
     }
 
-    // Use environment variables for secure configuration
-    const bigquery = new BigQuery({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    });
+    // Use centralized BigQuery client configuration
+    const bigquery = createBigQueryClient();
 
     const datasetId = "Manual";
     const tableId = "reports";
@@ -68,11 +65,8 @@ export async function DELETE(request: Request) {
       }, { status: 400 });
     }
 
-    // Use environment variables for secure configuration
-    const bigquery = new BigQuery({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    });
+    // Use centralized BigQuery client configuration
+    const bigquery = createBigQueryClient();
 
     const datasetId = "Manual";
     const tableId = "reports";

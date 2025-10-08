@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { BigQuery } from '@google-cloud/bigquery';
+import { createBigQueryClient } from '@/lib/bigquery';
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   console.log('🔧 PUT /api/clients/[id] - Request received');
@@ -17,11 +17,8 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       return NextResponse.json({ error: 'Client ID is required.' }, { status: 400 });
     }
 
-    // Use environment variables for secure configuration
-    const bigquery = new BigQuery({
-      projectId: process.env.GOOGLE_CLOUD_PROJECT_ID,
-      keyFilename: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-    });
+    // Use centralized BigQuery client configuration
+    const bigquery = createBigQueryClient();
 
     const datasetId = "Manual";
     const tableId = "k2_clients";

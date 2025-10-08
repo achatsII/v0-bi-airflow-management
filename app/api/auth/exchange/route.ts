@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import cookie from 'cookie';
+import { API_BASE_URL } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Missing required parameters' }, { status: 400 });
     }
 
-    const GATEWAY_BASE = process.env.GATEWAY_BASE!;
+    const GATEWAY_BASE = API_BASE_URL.replace('/api/v1', '');
     console.log('🔗 Using gateway URL:', GATEWAY_BASE);
     
     const response = await fetch(`${GATEWAY_BASE}/api/v1/auth/token/code`, {

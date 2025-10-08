@@ -1,9 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { AUTH_PORTAL_URL, BASE_URL } from '@/lib/config';
 
 export async function POST(request: NextRequest) {
   try {
-    const portal = process.env.AUTH_PORTAL_BASE!;
-    const redirect_uri = `${process.env.PUBLIC_BASE_URL}/`;
+    const portal = AUTH_PORTAL_URL;
+    const redirect_uri = `${BASE_URL}/`;
 
     const responseObj = NextResponse.json({ 
       redirect_url: `${portal}/logout?redirect_uri=${encodeURIComponent(redirect_uri)}` 

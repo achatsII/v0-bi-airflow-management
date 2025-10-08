@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect } from "react";
+import { BASE_URL, REDIRECT_PATH, APP_IDENTIFIER } from "@/lib/config";
 
 export default function Callback() {
   useEffect(() => {
@@ -21,8 +22,8 @@ export default function Callback() {
       body: JSON.stringify({
         code,
         code_verifier,
-        redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL}${process.env.NEXT_PUBLIC_REDIRECT_PATH}`,
-        app_identifier: process.env.NEXT_PUBLIC_APP_IDENTIFIER,
+        redirect_uri: `${BASE_URL}${REDIRECT_PATH}`,
+        app_identifier: APP_IDENTIFIER,
       }),
     })
       .then((r) => (r.ok ? "/" : "/login"))

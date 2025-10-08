@@ -3,6 +3,7 @@
 import { randomString, sha256 } from "@/lib/pkce";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { AUTH_PORTAL_URL, BASE_URL, REDIRECT_PATH, APP_IDENTIFIER } from "@/lib/config";
 
 export default function Login() {
   async function startLogin() {
@@ -14,18 +15,17 @@ export default function Login() {
     localStorage.setItem("pkce_verifier", code_verifier);
 
     const params = new URLSearchParams({
-      redirect_uri: `${process.env.NEXT_PUBLIC_BASE_URL || window.location.origin}${process.env.NEXT_PUBLIC_REDIRECT_PATH || "/callback"}`,
-      app_identifier: process.env.NEXT_PUBLIC_APP_IDENTIFIER || "",
+      redirect_uri: `${BASE_URL}${REDIRECT_PATH}`,
+      app_identifier: APP_IDENTIFIER,
       code_challenge,
       code_challenge_method: "S256",
       state,
     });
     
-    const portal = process.env.NEXT_PUBLIC_AUTH_PORTAL_BASE;
-    console.log('🔗 Redirecting to auth portal:', portal);
-    console.log('📋 Login URL:', `${portal}/login?${params.toString()}`);
+    console.log('🔗 Redirecting to auth portal:', AUTH_PORTAL_URL);
+    console.log('📋 Login URL:', `${AUTH_PORTAL_URL}/login?${params.toString()}`);
     
-    window.location.href = `${portal}/login?${params.toString()}`;
+    window.location.href = `${AUTH_PORTAL_URL}/login?${params.toString()}`;
   }
 
   return (
