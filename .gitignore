@@ -29,3 +29,5 @@ yarn-error.log*
 
 # Google Cloud credentials
 ii-access.json
+credentials-base64.txt
+encode-credentials.js
