@@ -22,6 +22,12 @@ export function createBigQueryClient(): BigQuery {
     try {
       // Try to parse as JSON (production)
       const credentialsObj = JSON.parse(credentials);
+      
+      // Fix the private key: replace literal \n with actual newlines
+      if (credentialsObj.private_key) {
+        credentialsObj.private_key = credentialsObj.private_key.replace(/\\n/g, '\n');
+      }
+      
       bigqueryConfig.credentials = credentialsObj;
       console.log('✅ Using BigQuery with JSON credentials');
     } catch {
