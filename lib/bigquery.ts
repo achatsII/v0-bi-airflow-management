@@ -12,37 +12,30 @@ export function createBigQueryClient(): BigQuery {
     throw new Error('GOOGLE_CLOUD_PROJECT_ID environment variable is not set');
   }
 
-  // In production (Vercel), credentials will be a JSON string
+  // In production (Vercel), credentials can be JSON string or base64
   // In development, it will be a file path
   if (credentials) {
     try {
-      // Try to parse as JSON (production)
-      let credentialsObj = JSON.parse(credentials);
+      let credentialsObj;
       
-      // Fix the private key: ensure proper newline format
-      if (credentialsObj.private_key && typeof credentialsObj.private_key === 'string') {
-        let key = credentialsObj.private_key;
+      // Check if it's base64 encoded (no { at start)
+      if (!credentials.trim().startsWith('{')) {
+        console.log('🔍 Detected base64 encoded credentials, decoding...');
+        const decoded = Buffer.from(credentials, 'base64').toString('utf8');
+        credentialsObj = JSON.parse(decoded);
+      } else {
+        // Try to parse as JSON directly
+        credentialsObj = JSON.parse(credentials);
         
-        // Log original format for debugging
-        console.log('🔍 Original key length:', key.length);
-        console.log('🔍 First 50 chars:', key.substring(0, 50));
-        console.log('🔍 Has literal \\n:', key.includes('\\n'));
-        console.log('🔍 Has actual newline:', key.includes('\n'));
-        
-        // Try all possible newline formats
-        key = key
-          .split('\\n').join('\n')      // Replace literal \n
-          .split('\\\\n').join('\n')    // Replace double-escaped \\n
-          .split('\r\n').join('\n')     // Normalize Windows newlines
-          .split('\r').join('\n');      // Normalize old Mac newlines
-        
-        credentialsObj.private_key = key;
-        
-        console.log('🔍 After fix - First 50 chars:', key.substring(0, 50));
-        console.log('🔍 After fix - Has newlines:', key.includes('\n'));
+        // Fix the private key: ensure proper newline format
+        if (credentialsObj.private_key && typeof credentialsObj.private_key === 'string') {
+          credentialsObj.private_key = credentialsObj.private_key
+            .split('\\n').join('\n');
+        }
       }
       
       console.log('✅ Using BigQuery with JSON credentials');
+      console.log('📧 Service account:', credentialsObj.client_email);
       
       return new BigQuery({
         projectId,
