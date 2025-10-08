@@ -14,30 +14,37 @@ export function createBigQueryClient(): BigQuery {
 
   // In production (Vercel), credentials will be a JSON string
   // In development, it will be a file path
-  let bigqueryConfig: any = {
-    projectId,
-  };
-
   if (credentials) {
     try {
       // Try to parse as JSON (production)
       const credentialsObj = JSON.parse(credentials);
       
       // Fix the private key: replace literal \n with actual newlines
-      if (credentialsObj.private_key) {
-        credentialsObj.private_key = credentialsObj.private_key.replace(/\\n/g, '\n');
+      if (credentialsObj.private_key && typeof credentialsObj.private_key === 'string') {
+        // Replace all variations of escaped newlines
+        credentialsObj.private_key = credentialsObj.private_key
+          .replace(/\\n/g, '\n')
+          .replace(/\\\\n/g, '\n');
       }
       
-      bigqueryConfig.credentials = credentialsObj;
       console.log('✅ Using BigQuery with JSON credentials');
-    } catch {
+      
+      return new BigQuery({
+        projectId,
+        credentials: credentialsObj,
+      });
+      
+    } catch (parseError) {
+      console.error('❌ Failed to parse credentials JSON:', parseError);
       // If parsing fails, treat as file path (development)
-      bigqueryConfig.keyFilename = credentials;
       console.log('✅ Using BigQuery with keyFilename:', credentials);
+      return new BigQuery({
+        projectId,
+        keyFilename: credentials,
+      });
     }
   } else {
     console.warn('⚠️ No BigQuery credentials provided, using default credentials');
+    return new BigQuery({ projectId });
   }
-
-  return new BigQuery(bigqueryConfig);
 }
