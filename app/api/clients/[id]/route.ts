@@ -20,7 +20,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Manual";
+    const datasetId = "Application_Airflow";
     const tableId = "k2_clients";
 
     // Build the UPDATE query with the configuration data
@@ -79,7 +79,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Execute the UPDATE query
     const updateQuery = `
-      UPDATE \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${datasetId}.${tableId}\`
+      UPDATE \`dw-intelligence-industrielle.Application_Airflow.k2_clients\`
       SET ${updateFields.join(', ')}
       WHERE id = @client_id
     `;

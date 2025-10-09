@@ -13,13 +13,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Manual";
+    const datasetId = "Application_Airflow";
     const tableId = "reports";
 
     // Query to get all reports for the specific client
     const query = `
       SELECT name, group_id, dataset_id, type
-      FROM \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${datasetId}.${tableId}\`
+      FROM \`dw-intelligence-industrielle.Application_Airflow.reports\`
       WHERE client_id = @client_id
       ORDER BY name ASC
     `;

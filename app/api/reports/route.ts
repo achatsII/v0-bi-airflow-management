@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Manual";
+    const datasetId = "Application_Airflow";
     const tableId = "reports";
 
     // Prepare data for BigQuery insertion - match table schema exactly
@@ -68,12 +68,12 @@ export async function DELETE(request: Request) {
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Manual";
+    const datasetId = "Application_Airflow";
     const tableId = "reports";
 
     // Delete the specific report using dataset_id as primary key
     const deleteQuery = `
-      DELETE FROM \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${datasetId}.${tableId}\`
+      DELETE FROM \`dw-intelligence-industrielle.Application_Airflow.reports\`
       WHERE dataset_id = @dataset_id
     `;
 

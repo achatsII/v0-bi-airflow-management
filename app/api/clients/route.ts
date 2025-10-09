@@ -12,7 +12,7 @@ export async function GET() {
     // Query to get all clients
     const query = `
       SELECT *
-      FROM \`${process.env.GOOGLE_CLOUD_PROJECT_ID}.${datasetId}.${tableId}\`
+      FROM \`dw-intelligence-industrielle.Application_Airflow.k2_clients\`
       ORDER BY name ASC
     `;
 
