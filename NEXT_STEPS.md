@@ -1,0 +1,2 @@
+- Ajouter le monitoring des DAGs et les détections d'anomalies
+- 
