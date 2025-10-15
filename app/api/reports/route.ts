@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
+import { BIGQUERY_DATASET } from '@/lib/config';
 
 export async function POST(request: Request) {
   try {
@@ -13,12 +14,12 @@ export async function POST(request: Request) {
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Application_Airflow";
+    const datasetId = BIGQUERY_DATASET;
     const tableId = "reports";
 
     // Use query-based INSERT instead of streaming to allow immediate deletion
     const insertQuery = `
-      INSERT INTO \`dw-intelligence-industrielle.Application_Airflow.reports\`
+      INSERT INTO \`dw-intelligence-industrielle.${datasetId}.reports\`
       (name, group_id, dataset_id, type, client_id)
       VALUES (@name, @group_id, @dataset_id, @type, @client_id)
     `;
@@ -82,12 +83,12 @@ export async function DELETE(request: Request) {
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Application_Airflow";
+    const datasetId = BIGQUERY_DATASET;
     const tableId = "reports";
 
     // Delete the specific report using dataset_id as primary key
     const deleteQuery = `
-      DELETE FROM \`dw-intelligence-industrielle.Application_Airflow.reports\`
+      DELETE FROM \`dw-intelligence-industrielle.${datasetId}.reports\`
       WHERE dataset_id = @dataset_id
     `;
 
