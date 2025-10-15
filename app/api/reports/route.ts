@@ -16,19 +16,33 @@ export async function POST(request: Request) {
     const datasetId = "Application_Airflow";
     const tableId = "reports";
 
-    // Prepare data for BigQuery insertion - match table schema exactly
-    const rowsToInsert = [{
-      name: reportData.name,
-      group_id: reportData.group_id,
-      dataset_id: reportData.dataset_id,
-      type: reportData.type,
-      client_id: reportData.client_id || null, // Optional field
-    }];
+    // Use query-based INSERT instead of streaming to allow immediate deletion
+    const insertQuery = `
+      INSERT INTO \`dw-intelligence-industrielle.Application_Airflow.reports\`
+      (name, group_id, dataset_id, type, client_id)
+      VALUES (@name, @group_id, @dataset_id, @type, @client_id)
+    `;
 
-    await bigquery
-      .dataset(datasetId)
-      .table(tableId)
-      .insert(rowsToInsert);
+    const [job] = await bigquery.createQueryJob({
+      query: insertQuery,
+      params: {
+        name: reportData.name,
+        group_id: reportData.group_id,
+        dataset_id: reportData.dataset_id,
+        type: reportData.type,
+        client_id: reportData.client_id || null,
+      },
+      types: {
+        name: 'STRING',
+        group_id: 'STRING',
+        dataset_id: 'STRING',
+        type: 'STRING',
+        client_id: 'STRING',
+      },
+      location: 'US',
+    });
+
+    await job.getQueryResults();
 
     return NextResponse.json({ success: true, message: 'Report added to BigQuery successfully.' }, { status: 201 });
 

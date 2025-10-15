@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Trash2, Plus } from "lucide-react"
 import cronstrue from "cronstrue"
 import parser from "cron-parser"
+import { useToast } from "@/components/ui/toast"
 
 // Mock data based on the provided JSON structure
 const mockClients = [
@@ -64,6 +65,7 @@ const availableToggles = [
 ]
 
 export default function AirflowManagement() {
+  const { showToast } = useToast()
   const [selectedClientId, setSelectedClientId] = useState<string>("")
   const [selectedClient, setSelectedClient] = useState<any>(null)
   const [clients, setClients] = useState<any[]>([])
@@ -182,7 +184,7 @@ export default function AirflowManagement() {
     
     if (!selectedClient || !clientData) {
       console.log('❌ Missing client or client data')
-      alert('Please select a client first.')
+      showToast('Please select a client first.', 'error')
       return
     }
 
@@ -215,16 +217,13 @@ export default function AirflowManagement() {
       }
 
       const result = await response.json()
-      alert(`✅ Configuration saved successfully for ${selectedClient.name}!`)
+      showToast(`Configuration saved successfully for ${selectedClient.name}!`, 'success')
       console.log('Save result:', result)
       
     } catch (error) {
       console.error('Error saving configuration:', error)
-      if (error instanceof Error) {
-        alert(`❌ Error saving configuration: ${error.message}`)
-      } else {
-        alert('❌ An unknown error occurred while saving the configuration.')
-      }
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred while saving the configuration.'
+      showToast(`Error saving configuration: ${errorMessage}`, 'error')
     } finally {
       setSavingConfig(false)
     }
@@ -263,31 +262,39 @@ export default function AirflowManagement() {
 
         setNewReport({ name: "", group_id: "", dataset_id: "" })
         setShowAddReport(false)
-        alert("Report added successfully!")
+        showToast("Report added successfully!", "success")
       } catch (error) {
         console.error("Error adding report:", error)
-        if (error instanceof Error) {
-          alert(`Error adding report: ${error.message}`)
-        } else {
-          alert("An unknown error occurred while adding the report.")
-        }
+        const errorMessage = error instanceof Error ? error.message : "An unknown error occurred while adding the report."
+        showToast(`Error adding report: ${errorMessage}`, "error")
       }
     }
   }
 
-  const handleRemoveReport = async (index: number) => {
-    if (!selectedClient || !clientData.reports[index]) {
-      alert('Unable to delete report: missing client or report data.')
+  const handleRemoveReport = async (dataset_id: string) => {
+    if (!selectedClient || !clientData.reports) {
+      showToast('Unable to delete report: missing client or report data.', 'error')
       return
     }
 
-    const reportToDelete = clientData.reports[index]
+    const reportToDelete = clientData.reports.find((r: any) => r.dataset_id === dataset_id)
+    if (!reportToDelete) {
+      showToast('Report not found.', 'error')
+      return
+    }
+
+    // Optimistically update UI immediately - filter by dataset_id, not index
+    setClientData((prevData: any) => ({
+      ...prevData,
+      reports: prevData.reports.filter((r: any) => r.dataset_id !== dataset_id),
+    }))
+
+    // Show immediate feedback
+    showToast('Deleting report...', 'info')
     
+    // Fire DELETE request in background
     try {
-      // Build query parameters for the DELETE request (only dataset_id needed as primary key)
-      const params = new URLSearchParams({
-        dataset_id: reportToDelete.dataset_id
-      })
+      const params = new URLSearchParams({ dataset_id })
 
       const response = await fetch(`/api/reports?${params}`, {
         method: 'DELETE',
@@ -298,22 +305,20 @@ export default function AirflowManagement() {
         throw new Error(errorData.error || 'Failed to delete report from database.')
       }
 
-      // On successful API call, refresh the reports list from database
-      const updatedReports = await fetchClientReports(selectedClient.id)
-      setClientData({
-        ...clientData,
-        reports: updatedReports,
-      })
-
-      alert("Report deleted successfully!")
+      // Success notification
+      showToast('Report deleted successfully!', 'success')
       
     } catch (error) {
       console.error('Error deleting report:', error)
-      if (error instanceof Error) {
-        alert(`❌ Error deleting report: ${error.message}`)
-      } else {
-        alert('❌ An unknown error occurred while deleting the report.')
-      }
+      
+      // Rollback: Add the report back if deletion failed
+      setClientData((prevData: any) => ({
+        ...prevData,
+        reports: [...prevData.reports, reportToDelete],
+      }))
+      
+      const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
+      showToast(`Failed to delete report: ${errorMessage}`, 'error')
     }
   }
 
@@ -510,7 +515,7 @@ export default function AirflowManagement() {
                           JSON.parse(inputValue);
                           // Valid JSON - no action needed, already saved in onChange
                         } catch {
-                          alert("Invalid JSON format. Please check your syntax.");
+                          showToast("Invalid JSON format. Please check your syntax.", "error");
                           // Keep the invalid value so user can fix it
                         }
                       }
@@ -550,13 +555,13 @@ export default function AirflowManagement() {
                   </TableHeader>
                   <TableBody>
                     {clientData.reports && clientData.reports.length > 0 ? (
-                      clientData.reports.map((report: any, index: number) => (
-                        <TableRow key={index}>
+                      clientData.reports.map((report: any) => (
+                        <TableRow key={report.dataset_id}>
                           <TableCell>{report.name}</TableCell>
                           <TableCell className="font-mono text-sm">{report.group_id}</TableCell>
                           <TableCell className="font-mono text-sm">{report.dataset_id}</TableCell>
                           <TableCell>
-                            <Button variant="destructive" size="sm" onClick={() => handleRemoveReport(index)}>
+                            <Button variant="destructive" size="sm" onClick={() => handleRemoveReport(report.dataset_id)}>
                               <Trash2 className="h-4 w-4" />
                             </Button>
                           </TableCell>
