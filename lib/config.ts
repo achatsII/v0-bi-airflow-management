@@ -31,6 +31,8 @@ export const WEBSOCKET_URL = process.env.NEXT_PUBLIC_WEBSOCKET_URL || 'ws://loca
 // BigQuery Configuration
 export const BIGQUERY_PROJECT_ID = process.env.GOOGLE_CLOUD_PROJECT_ID;
 export const BIGQUERY_CREDENTIALS = process.env.GOOGLE_APPLICATION_CREDENTIALS;
+export const BIGQUERY_DATASET = process.env.BIGQUERY_DATASET || 
+  (isProduction ? 'Application_Airflow' : 'Application_Airflow_QA');
  
 export { isProduction, isQA, isDevelopment, environment };
 

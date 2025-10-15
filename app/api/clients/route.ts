@@ -1,18 +1,19 @@
 import { NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
+import { BIGQUERY_DATASET } from '@/lib/config';
 
 export async function GET() {
   try {
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Manual";
+    const datasetId = BIGQUERY_DATASET;
     const tableId = "k2_clients";
 
     // Query to get all clients
     const query = `
       SELECT *
-      FROM \`dw-intelligence-industrielle.Application_Airflow.k2_clients\`
+      FROM \`dw-intelligence-industrielle.${datasetId}.k2_clients\`
       ORDER BY name ASC
     `;
 

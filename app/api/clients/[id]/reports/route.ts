@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
+import { BIGQUERY_DATASET } from '@/lib/config';
 
 export async function GET(request: Request, { params }: { params: { id: string } }) {
   try {
@@ -13,13 +14,13 @@ export async function GET(request: Request, { params }: { params: { id: string }
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Application_Airflow";
+    const datasetId = BIGQUERY_DATASET;
     const tableId = "reports";
 
     // Query to get all reports for the specific client
     const query = `
       SELECT name, group_id, dataset_id, type
-      FROM \`dw-intelligence-industrielle.Application_Airflow.reports\`
+      FROM \`dw-intelligence-industrielle.${datasetId}.reports\`
       WHERE client_id = @client_id
       ORDER BY name ASC
     `;

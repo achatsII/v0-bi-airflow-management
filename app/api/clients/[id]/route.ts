@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
+import { BIGQUERY_DATASET } from '@/lib/config';
 
 export async function PUT(request: Request, { params }: { params: { id: string } }) {
   console.log('🔧 PUT /api/clients/[id] - Request received');
@@ -20,7 +21,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = "Application_Airflow";
+    const datasetId = BIGQUERY_DATASET;
     const tableId = "k2_clients";
 
     // Build the UPDATE query with the configuration data
@@ -79,7 +80,7 @@ export async function PUT(request: Request, { params }: { params: { id: string }
 
     // Execute the UPDATE query
     const updateQuery = `
-      UPDATE \`dw-intelligence-industrielle.Application_Airflow.k2_clients\`
+      UPDATE \`dw-intelligence-industrielle.${datasetId}.k2_clients\`
       SET ${updateFields.join(', ')}
       WHERE id = @client_id
     `;
