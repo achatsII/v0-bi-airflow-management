@@ -27,7 +27,7 @@ const mockClients = [
         dataset_id: "8f676918-21ae-4520-bb92-7d82c36b6430",
       },
     ],
-    toggles: ["new_part_events"],
+    toggles: ["part_events"],
   },
   {
     name: "TechCorp",
@@ -58,7 +58,6 @@ const timezones = [
 ]
 
 const availableToggles = [
-  { value: "new_part_events", label: "New Part Events" },
   { value: "part_events", label: "Part Events" },
   { value: "performance_loss", label: "Performance Loss" },
   { value: "custom", label: "Custom" },
@@ -150,7 +149,6 @@ export default function AirflowManagement() {
         reports: reports, // Use real reports from database
         toggles: [
           ...(client.toggle_part_events ? ["part_events"] : []),
-          ...(client.toggle_new_part_events ? ["new_part_events"] : []),
           ...(client.toggle_performance_loss ? ["performance_loss"] : []),
           ...(client.toggle_custom ? ["custom"] : [])
         ],
@@ -167,7 +165,6 @@ export default function AirflowManagement() {
         reports_count: reports.length,
         toggles: {
           part_events: client.toggle_part_events,
-          new_part_events: client.toggle_new_part_events,
           performance_loss: client.toggle_performance_loss,
           custom: client.toggle_custom
         }

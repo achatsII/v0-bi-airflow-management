@@ -27,7 +27,7 @@ Expression cron (planification)
   - 0 9,15 * * * = tous les jours à 09:00 et 15:00
 
 Commutateurs de fonctionnalités (les toggles)
-- Activez ou désactivez des fonctionnalités comme « part_events », « new_part_events », « performance_loss ».
+- Activez ou désactivez des fonctionnalités comme « part_events », « performance_loss ».
 
 Configuration personnalisée (toggles encore)
 - Entrez un JSON correct pour des besoins précis.
