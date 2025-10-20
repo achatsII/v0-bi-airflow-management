@@ -81,7 +81,13 @@ export default function AirflowManagement() {
     const fetchClients = async () => {
       try {
         setLoadingClients(true)
-        const response = await fetch("/api/clients")
+        // Add timestamp to prevent caching in production
+        const response = await fetch(`/api/clients?_t=${Date.now()}`, {
+          cache: 'no-store',
+          headers: {
+            'Cache-Control': 'no-cache',
+          }
+        })
         
         if (!response.ok) {
           throw new Error("Failed to fetch clients")
@@ -105,7 +111,13 @@ export default function AirflowManagement() {
   const fetchClientReports = async (clientId: string) => {
     try {
       setLoadingReports(true)
-      const response = await fetch(`/api/clients/${clientId}/reports`)
+      // Add timestamp to prevent caching in production
+      const response = await fetch(`/api/clients/${clientId}/reports?_t=${Date.now()}`, {
+        cache: 'no-store',
+        headers: {
+          'Cache-Control': 'no-cache',
+        }
+      })
       
       if (!response.ok) {
         throw new Error("Failed to fetch client reports")
