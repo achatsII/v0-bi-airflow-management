@@ -51,9 +51,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
       updateFields.push('toggle_part_events = @toggle_part_events');
       queryParams.toggle_part_events = toggles.includes('part_events');
       
-      updateFields.push('toggle_new_part_events = @toggle_new_part_events');
-      queryParams.toggle_new_part_events = toggles.includes('new_part_events');
-      
       updateFields.push('toggle_performance_loss = @toggle_performance_loss');
       queryParams.toggle_performance_loss = toggles.includes('performance_loss');
       
@@ -108,9 +105,6 @@ export async function PUT(request: Request, { params }: { params: { id: string }
     }
     if (queryParams.toggle_part_events !== undefined) {
       parameterTypes.toggle_part_events = 'BOOL';
-    }
-    if (queryParams.toggle_new_part_events !== undefined) {
-      parameterTypes.toggle_new_part_events = 'BOOL';
     }
     if (queryParams.toggle_performance_loss !== undefined) {
       parameterTypes.toggle_performance_loss = 'BOOL';
