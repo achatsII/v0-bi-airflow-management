@@ -112,8 +112,19 @@ export default function AirflowManagement() {
       }
       
       const data = await response.json()
-      console.log('📊 Fetched reports for client:', data.reports)
-      return data.reports || []
+      const reports = data.reports || []
+      
+      // Deduplicate reports by dataset_id to prevent React key errors
+      const uniqueReports = reports.reduce((acc: any[], report: any) => {
+        const exists = acc.some(r => r.dataset_id === report.dataset_id)
+        if (!exists) {
+          acc.push(report)
+        }
+        return acc
+      }, [])
+      
+      console.log('📊 Fetched reports for client:', uniqueReports)
+      return uniqueReports
     } catch (error) {
       console.error("Error fetching client reports:", error)
       // Return empty array if API fails
@@ -231,6 +242,13 @@ export default function AirflowManagement() {
 
   const handleAddReport = async () => {
     if (newReport.name && newReport.group_id && newReport.dataset_id) {
+      // Validate report name - only alphanumeric, underscores, and hyphens (no spaces)
+      const nameRegex = /^[a-zA-Z0-9_-]+$/;
+      if (!nameRegex.test(newReport.name)) {
+        showToast("Report name must contain only letters, numbers, underscores, and hyphens (no spaces).", "error");
+        return;
+      }
+
       const reportData = {
         name: newReport.name,
         group_id: newReport.group_id,
@@ -302,20 +320,47 @@ export default function AirflowManagement() {
 
       if (!response.ok) {
         const errorData = await response.json()
+        
+        // If report doesn't exist (404), treat as success - it's already deleted
+        if (response.status === 404) {
+          showToast('Report already deleted.', 'success')
+          // Refresh reports from database to ensure sync
+          const freshReports = await fetchClientReports(selectedClient.id)
+          setClientData((prevData: any) => ({
+            ...prevData,
+            reports: freshReports,
+          }))
+          return
+        }
+        
         throw new Error(errorData.error || 'Failed to delete report from database.')
       }
 
-      // Success notification
+      // Success notification - refresh from database to ensure sync
       showToast('Report deleted successfully!', 'success')
+      
+      // Refresh reports from database to stay in sync
+      const freshReports = await fetchClientReports(selectedClient.id)
+      setClientData((prevData: any) => ({
+        ...prevData,
+        reports: freshReports,
+      }))
       
     } catch (error) {
       console.error('Error deleting report:', error)
       
-      // Rollback: Add the report back if deletion failed
-      setClientData((prevData: any) => ({
-        ...prevData,
-        reports: [...prevData.reports, reportToDelete],
-      }))
+      // Rollback: Add the report back if deletion failed (but check it's not already there)
+      setClientData((prevData: any) => {
+        // Check if report already exists to prevent duplicates
+        const exists = prevData.reports.some((r: any) => r.dataset_id === dataset_id)
+        if (exists) {
+          return prevData // Don't add duplicate
+        }
+        return {
+          ...prevData,
+          reports: [...prevData.reports, reportToDelete],
+        }
+      })
       
       const errorMessage = error instanceof Error ? error.message : 'An unknown error occurred'
       showToast(`Failed to delete report: ${errorMessage}`, 'error')
@@ -589,11 +634,14 @@ export default function AirflowManagement() {
                 <div className="mt-4 p-4 border rounded-lg space-y-3">
                   <h4 className="font-medium">Add New Report</h4>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <Input
-                      placeholder="Report Name"
-                      value={newReport.name}
-                      onChange={(e) => setNewReport({ ...newReport, name: e.target.value })}
-                    />
+                    <div>
+                      <Input
+                        placeholder="Report Name"
+                        value={newReport.name}
+                        onChange={(e) => setNewReport({ ...newReport, name: e.target.value })}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1"></p>
+                    </div>
                     <Input
                       placeholder="Group ID"
                       value={newReport.group_id}

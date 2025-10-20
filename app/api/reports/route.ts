@@ -11,6 +11,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid data: name, group_id, dataset_id, and type are required.' }, { status: 400 });
     }
 
+    // Validate report name - only alphanumeric, underscores, and hyphens (no spaces)
+    const nameRegex = /^[a-zA-Z0-9_-]+$/;
+    if (!nameRegex.test(reportData.name)) {
+      return NextResponse.json({ 
+        error: 'Report name must contain only letters, numbers, underscores, and hyphens (no spaces).' 
+      }, { status: 400 });
+    }
+
     // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
