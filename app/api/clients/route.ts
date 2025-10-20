@@ -2,6 +2,10 @@ import { NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
 import { BIGQUERY_DATASET } from '@/lib/config';
 
+// Force dynamic rendering - don't cache this route
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
+
 export async function GET() {
   try {
     // Use centralized BigQuery client configuration
@@ -25,7 +29,14 @@ export async function GET() {
     return NextResponse.json({ 
       success: true, 
       clients: rows 
-    }, { status: 200 });
+    }, { 
+      status: 200,
+      headers: {
+        'Cache-Control': 'no-store, no-cache, must-revalidate, proxy-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
+      }
+    });
 
   } catch (error) {
     console.error("Failed to fetch clients from BigQuery:", error);
