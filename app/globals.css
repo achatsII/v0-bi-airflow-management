@@ -175,3 +175,11 @@
   --shadow-xl: var(--shadow-xl);
   --shadow-2xl: var(--shadow-2xl);
 }
+
+/* Force red color for inactive report icons in rapports-v0 */
+.lucide-circle-x {
+  color: #ef4444 !important;
+}
+.lucide-circle-x[class*="text-red"] {
+  color: #ef4444 !important;
+}
