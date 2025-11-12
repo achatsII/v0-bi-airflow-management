@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createBigQueryClient } from '@/lib/bigquery';
-import { BIGQUERY_DATASET } from '@/lib/config';
 
 // Cache for 1 hour (can be bypassed with ?refresh param)
 export const revalidate = 3600;
@@ -8,29 +7,24 @@ export const revalidate = 3600;
 export async function GET(request: NextRequest) {
   // Check if force refresh is requested
   const forceRefresh = request.nextUrl.searchParams.has('refresh');
-
   try {
-    // Use centralized BigQuery client configuration
     const bigquery = createBigQueryClient();
 
-    const datasetId = BIGQUERY_DATASET;
-    const tableId = "k2_clients";
-
-    // Query to get all clients
+    // Query to get all available reports from the Reports table
     const query = `
-      SELECT *
-      FROM \`dw-intelligence-industrielle.${datasetId}.k2_clients\`
+      SELECT id, name, sub_domain
+      FROM \`dw-intelligence-industrielle.Application_V0Report.Reports\`
       ORDER BY name ASC
     `;
 
     const [rows] = await bigquery.query({
       query: query,
-      location: 'US', // Specify the location if needed
+      location: 'US',
     });
 
     return NextResponse.json({ 
       success: true, 
-      clients: rows 
+      reports: rows 
     }, { 
       status: 200,
       headers: forceRefresh ? {
@@ -43,17 +37,18 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error) {
-    console.error("Failed to fetch clients from BigQuery:", error);
+    console.error("Failed to fetch available v0 reports from BigQuery:", error);
     
-    let errorMessage = 'An internal server error occurred while fetching clients.';
+    let errorMessage = 'An internal server error occurred while fetching available reports.';
     if (error instanceof Error) {
         if (error.message.includes('NOT_FOUND')) {
-            errorMessage = 'BigQuery k2_clients table not found. Please verify your configuration.';
+            errorMessage = 'BigQuery Reports table not found. Please verify your configuration.';
         } else if (error.message.includes('ENOENT') || error.message.includes('credential file')) {
-            errorMessage = 'Authentication error: Could not find the ii-access.json file. Please ensure it is in the project root directory.';
+            errorMessage = 'Authentication error: Could not find the ii-access.json file.';
         }
     }
     
     return NextResponse.json({ success: false, error: errorMessage }, { status: 500 });
   }
 }
+
